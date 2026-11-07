@@ -1,0 +1,140 @@
+
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BTC Predictor</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  color:#fff;overflow-x:hidden;
+  background:linear-gradient(135deg,#1e1b4b 0%,#312e81 40%,#7c3aed 75%,#db2777 100%);
+}
+.blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.45;z-index:0}
+.b1{width:260px;height:260px;background:#06b6d4;top:-80px;left:-80px}
+.b2{width:300px;height:300px;background:#f59e0b;bottom:-100px;right:-100px}
+.card{
+  position:relative;z-index:1;width:100%;max-width:min(94vw,560px);padding:34px 26px;
+  background:rgba(255,255,255,.12);backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  border:1px solid rgba(255,255,255,.25);border-radius:28px;
+  box-shadow:0 20px 50px rgba(0,0,0,.35);text-align:center;
+}
+.logo{
+  width:64px;height:64px;margin:0 auto 12px;border-radius:50%;
+  background:linear-gradient(135deg,#fbbf24,#f97316);
+  display:flex;align-items:center;justify-content:center;
+  font-size:34px;font-weight:800;box-shadow:0 8px 20px rgba(249,115,22,.5);
+}
+h1{font-size:26px;font-weight:800;letter-spacing:.3px}
+.sub{font-size:13px;color:#e9d5ff;margin:4px 0 22px}
+#btn{
+  width:100%;padding:18px;border:0;border-radius:16px;cursor:pointer;
+  font-size:22px;font-weight:800;color:#fff;letter-spacing:.5px;
+  background:linear-gradient(90deg,#f59e0b,#ef4444,#ec4899,#f59e0b);
+  background-size:300% 100%;animation:shift 6s linear infinite;
+  box-shadow:0 10px 25px rgba(236,72,153,.5);
+  transition:transform .15s, box-shadow .15s;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+#btn:active{transform:scale(.97);box-shadow:0 5px 12px rgba(236,72,153,.5)}
+#btn:disabled{opacity:.75;cursor:wait}
+@keyframes shift{to{background-position:300% 0}}
+.spin{
+  width:18px;height:18px;border:3px solid rgba(255,255,255,.4);
+  border-top-color:#fff;border-radius:50%;animation:rot .8s linear infinite;display:none;
+}
+@keyframes rot{to{transform:rotate(360deg)}}
+#out{margin-top:22px;display:none;animation:fade .5s ease}
+@keyframes fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{background:rgba(255,255,255,.14);border-radius:16px;padding:14px 8px}
+.lbl{font-size:12px;color:#ddd6fe;margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.val{font-size:24px;font-weight:800}
+.badge{
+  margin-top:14px;padding:12px;border-radius:14px;font-weight:800;font-size:16px;
+}
+.up{background:rgba(34,197,94,.25);color:#86efac;border:1px solid #22c55e}
+.down{background:rgba(239,68,68,.25);color:#fca5a5;border:1px solid #ef4444}
+.flat{background:rgba(148,163,184,.25);color:#e2e8f0;border:1px solid #94a3b8}
+.time{font-size:12px;color:#ddd6fe;margin-top:12px}
+.err{margin-top:18px;padding:14px;border-radius:14px;background:rgba(239,68,68,.25);
+  border:1px solid #ef4444;color:#fecaca;font-size:14px;display:none}
+.note{margin-top:22px;font-size:13px;line-height:1.5;color:#ddd6fe;opacity:.9}
+</style></head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div>
+<div class="card">
+  <div class="logo">&#8383;</div>
+  <h1>Bitcoin Next-Day Predictor</h1>
+  <div class="sub">Powered by a GRU deep learning model</div>
+
+  <button id="btn" onclick="go()">
+    <span class="spin" id="spin"></span><span id="btxt">Predict Now</span>
+  </button>
+
+  <div class="err" id="err"></div>
+
+  <div id="out">
+    <div class="row">
+      <div class="box"><div class="lbl">Current</div><div class="val" id="cur">-</div></div>
+      <div class="box"><div class="lbl">Predicted</div><div class="val" id="nxt">-</div></div>
+    </div>
+    <div class="badge" id="badge">-</div>
+    <div class="time" id="time"></div>
+  </div>
+
+  <p class="note">Educational demo only, not financial advice.
+  This model does not beat a simple "same as today" guess.</p>
+</div>
+
+<script>
+const money = n => n.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0});
+
+async function go(){
+  const btn = document.getElementById('btn');
+  const spin = document.getElementById('spin');
+  const btxt = document.getElementById('btxt');
+  const out = document.getElementById('out');
+  const err = document.getElementById('err');
+
+  btn.disabled = true; spin.style.display = 'block';
+  btxt.textContent = 'Fetching live prices...';
+  err.style.display = 'none'; out.style.display = 'none';
+
+  try {
+    const r = await fetch('/live');
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Something went wrong');
+
+    document.getElementById('cur').textContent = money(d.last_price);
+    document.getElementById('nxt').textContent = money(d.predicted_next_price);
+
+    const pct = d.predicted_return_pct;
+    const badge = document.getElementById('badge');
+    if (Math.abs(pct) < 0.05) {
+      badge.className = 'badge flat';
+      badge.textContent = 'Flat: ' + pct + '%';
+    } else if (pct > 0) {
+      badge.className = 'badge up';
+      badge.textContent = '\u25B2 Up ' + pct + '%';
+    } else {
+      badge.className = 'badge down';
+      badge.textContent = '\u25BC Down ' + Math.abs(pct) + '%';
+    }
+    document.getElementById('time').textContent =
+      'Updated at ' + new Date().toLocaleTimeString();
+    out.style.display = 'block';
+    btxt.textContent = 'Predict Again';
+  } catch (e) {
+    err.textContent = 'Error: ' + e.message + '. Please try again in a minute.';
+    err.style.display = 'block';
+    btxt.textContent = 'Try Again';
+  } finally {
+    btn.disabled = false; spin.style.display = 'none';
+  }
+}
+</script>
+</body></html>

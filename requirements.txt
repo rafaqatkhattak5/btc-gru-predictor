@@ -1,0 +1,7 @@
+tensorflow==2.21.0
+scikit-learn==1.6.1
+numpy==2.4.6
+joblib==1.6.0
+fastapi==0.141.1
+uvicorn==0.54.0
+requests==2.32.4
