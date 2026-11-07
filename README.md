@@ -1,6 +1,6 @@
 # Bitcoin Next-Day Predictor (GRU + FastAPI)
 
-Screenshot_20261107-130325.jpg
+![App screenshot](Screenshot_20261107-130325.jpg)
 
 A deep learning practice project: LSTM and GRU models for Bitcoin time series, deployed as a FastAPI web app with a mobile-friendly UI.
 
